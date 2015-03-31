@@ -351,7 +351,7 @@ public class SchemPlotManager extends PlotManager {
         final Plot plot = PlotSquared.getPlots(world).get(plotIds.get(0));
         if (plot != null) {
             if (plot.hasOwner()) {
-                final UUID owner = plot.getOwner();
+                final UUID owner = plot.owner;
                 final PlotPlayer player = UUIDHandler.getPlayer(owner);
                 if (player != null) {
                     MainUtil.sendMessage(player, "&cPlot unlinking is not fully implemented");

@@ -6,7 +6,11 @@ import org.bukkit.Chunk;
 import org.bukkit.World;
 import org.bukkit.generator.BlockPopulator;
 
-public class SchemPop extends BlockPopulator {
+import com.intellectualcrafters.plot.object.PlotPopulator;
+import com.intellectualcrafters.plot.object.PseudoRandom;
+import com.intellectualcrafters.plot.object.RegionWrapper;
+
+public class SchemPop extends PlotPopulator {
 
     private int absX, absZ;
 
@@ -17,9 +21,7 @@ public class SchemPop extends BlockPopulator {
     }
 
     @Override
-    public void populate(final World world, final Random rand, final Chunk chunk) {
-        this.absX = chunk.getX() << 4;
-        this.absZ = chunk.getZ() << 4;
+    public void populate(World world, RegionWrapper region, PseudoRandom rand, int cx, int cz) {
 
         int relX, relZ;
 
@@ -46,16 +48,11 @@ public class SchemPop extends BlockPopulator {
                     final BlockLoc loc = new BlockLoc((short) ((x + relX) % this.plotworld.WIDTH), (short) y, (short) ((z + relZ) % this.plotworld.LENGTH));
                     final BlockWrapper block = this.plotworld.GENERATOR_SCHEMATIC.get(loc);
                     if (block != null) {
-                        setBlock(world, x, y + this.plotworld.PLOT_HEIGHT, z, block.data);
+                        setBlock(x, y + this.plotworld.PLOT_HEIGHT, z, block.data);
                     }
                 }
             }
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    private void setBlock(final World w, final int x, final int y, final int z, final byte val) {
-        w.getBlockAt(this.absX + x, y, this.absZ + z).setData(val, false);
     }
 
 }

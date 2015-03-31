@@ -1,6 +1,6 @@
 name: AdvPlots
 main: com.empcraft.schem.Main
-version: 2.6.2
+version: 2.8.1
 load: STARTUP
 description: A simple showcase of the advanced plot generation, merging control, and tessellation using the PlotSquared API.
 authors: [Empire92, Citymonstret]
