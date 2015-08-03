@@ -1,18 +1,12 @@
 package com.empcraft.schem;
 
-import java.util.Random;
-
-import org.bukkit.Chunk;
 import org.bukkit.World;
-import org.bukkit.generator.BlockPopulator;
 
-import com.intellectualcrafters.plot.object.PlotPopulator;
 import com.intellectualcrafters.plot.object.PseudoRandom;
 import com.intellectualcrafters.plot.object.RegionWrapper;
+import com.plotsquared.bukkit.generator.BukkitPlotPopulator;
 
-public class SchemPop extends PlotPopulator {
-
-    private int absX, absZ;
+public class SchemPop extends BukkitPlotPopulator {
 
     private final SchemPlotWorld plotworld;
 
@@ -22,21 +16,19 @@ public class SchemPop extends PlotPopulator {
 
     @Override
     public void populate(World world, RegionWrapper region, PseudoRandom rand, int cx, int cz) {
-
         int relX, relZ;
-
-        if (this.absX >= 0) {
-            relX = this.absX % this.plotworld.WIDTH;
+        if (this.X >= 0) {
+            relX = this.X % this.plotworld.WIDTH;
         } else {
-            relX = this.absX % this.plotworld.WIDTH;
+            relX = this.X % this.plotworld.WIDTH;
             if (relX != 0) {
                 relX += this.plotworld.WIDTH;
             }
         }
-        if (this.absZ >= 0) {
-            relZ = this.absZ % this.plotworld.LENGTH;
+        if (this.Z >= 0) {
+            relZ = this.Z % this.plotworld.LENGTH;
         } else {
-            relZ = this.absZ % this.plotworld.LENGTH;
+            relZ = this.Z % this.plotworld.LENGTH;
             if (relZ != 0) {
                 relZ += this.plotworld.LENGTH;
             }
@@ -48,7 +40,7 @@ public class SchemPop extends PlotPopulator {
                     final BlockLoc loc = new BlockLoc((short) ((x + relX) % this.plotworld.WIDTH), (short) y, (short) ((z + relZ) % this.plotworld.LENGTH));
                     final BlockWrapper block = this.plotworld.GENERATOR_SCHEMATIC.get(loc);
                     if (block != null) {
-                        setBlock(x, y + this.plotworld.PLOT_HEIGHT, z, block.data);
+                        setBlockAbs(x, y + this.plotworld.PLOT_HEIGHT, z, block.data);
                     }
                 }
             }

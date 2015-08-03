@@ -1,11 +1,19 @@
 package com.empcraft.schem;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.UUID;
 
 import org.bukkit.World;
 
-import com.intellectualcrafters.plot.PlotSquared;
+import com.intellectualcrafters.configuration.ConfigurationSection;
+import com.intellectualcrafters.plot.PS;
+import com.intellectualcrafters.plot.commands.Template;
+import com.intellectualcrafters.plot.object.FileBytes;
 import com.intellectualcrafters.plot.object.Plot;
 import com.intellectualcrafters.plot.object.PlotBlock;
 import com.intellectualcrafters.plot.object.PlotId;
@@ -14,12 +22,50 @@ import com.intellectualcrafters.plot.object.PlotPlayer;
 import com.intellectualcrafters.plot.object.PlotWorld;
 import com.intellectualcrafters.plot.util.BlockManager;
 import com.intellectualcrafters.plot.util.MainUtil;
+import com.intellectualcrafters.plot.util.SetBlockQueue;
 import com.intellectualcrafters.plot.util.TaskManager;
-import com.intellectualcrafters.plot.util.bukkit.BukkitUtil;
-import com.intellectualcrafters.plot.util.bukkit.UUIDHandler;
+import com.intellectualcrafters.plot.util.UUIDHandler;
+import com.plotsquared.bukkit.util.BukkitUtil;
 
 public class SchemPlotManager extends PlotManager {
 
+    @Override
+    public void exportTemplate(PlotWorld plotworld) throws IOException {
+        ConfigurationSection config = PS.get().config.getConfigurationSection("worlds." + plotworld.worldname);
+        final String schem1Str = config.getString("plot.schematic.default");
+        final String schem2Str = config.getString("plot.schematic.merged_east");
+        final String schem3Str = config.getString("plot.schematic.merged_southeast");
+        final String schem4Str = config.getString("plot.schematic.merged_all");
+        HashSet<FileBytes> files = new HashSet<>(Arrays.asList(new FileBytes("templates/" + "tmp-data.yml", Template.getBytes(plotworld))));
+        String schemRoot = PS.get().IMP.getDirectory() + File.separator + "schematics" + File.separator;
+        String newDir =  "schematics" + File.separator;
+        try {
+            File file1 = new File(schemRoot + schem1Str + ".schematic");
+            if (file1.exists()) {
+                files.add(new FileBytes(newDir + schem1Str + ".schematic", Files.readAllBytes(file1.toPath())));
+            }
+            
+            File file2 = new File(schemRoot + schem2Str + ".schematic");
+            if (file2.exists()) {
+                files.add(new FileBytes(newDir + schem2Str + ".schematic", Files.readAllBytes(file2.toPath())));
+            }
+            
+            File file3 = new File(schemRoot + schem3Str + ".schematic");
+            if (file3.exists()) {
+                files.add(new FileBytes(newDir + schem3Str + ".schematic", Files.readAllBytes(file3.toPath())));
+            }
+            
+            File file4 = new File(schemRoot + schem4Str + ".schematic");
+            if (file4.exists()) {
+                files.add(new FileBytes(newDir + schem4Str + ".schematic", Files.readAllBytes(file4.toPath())));
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+        Template.zipAll(plotworld.worldname, files);
+    }
+    
     /**
      * Custom implementation
      */
@@ -91,40 +137,40 @@ public class SchemPlotManager extends PlotManager {
         final int rz = (z) % size;
 
         final PlotId id = new PlotId(dx + 1, dz + 1);
-        final Plot plot = PlotSquared.getPlots(plotworld.worldname).get(id);
+        final Plot plot = PS.get().getPlots(plotworld.worldname).get(id);
         if (plot != null) {
-            if (plot.settings.isMerged()) {
+            if (plot.isMerged()) {
                 if (spw.GENERATOR_PLOT_LOCS.contains(new PlotLoc((short) rx, (short) rz))) {
                     return MainUtil.getBottomPlot(plot).id;
                 }
 
-                if (plot.settings.getMerged(1)) {
+                if (plot.getMerged(1)) {
                     if (spw.GENERATOR_PLOT_LOCS_E.contains(new PlotLoc((short) rx, (short) rz))) {
                         return MainUtil.getBottomPlot(plot).id;
                     }
 
-                    if (plot.settings.getMerged(2)) {
+                    if (plot.getMerged(2)) {
                         if (spw.GENERATOR_PLOT_LOCS_SE.contains(new PlotLoc((short) rx, (short) rz))) {
                             return MainUtil.getBottomPlot(plot).id;
                         }
                     }
                 }
-                if (plot.settings.getMerged(2)) {
+                if (plot.getMerged(2)) {
                     if (spw.GENERATOR_PLOT_LOCS_E.contains(new PlotLoc((short) rz, (short) rx))) {
                         return MainUtil.getBottomPlot(plot).id;
                     }
                 }
-                if (plot.settings.getMerged(3)) {
+                if (plot.getMerged(3)) {
                     if (spw.GENERATOR_PLOT_LOCS_E.contains(new PlotLoc((short) (spw.MAX_X - rx), (short) (spw.MAX_Z - rz)))) {
                         return MainUtil.getBottomPlot(plot).id;
                     }
-                    if (plot.settings.getMerged(0)) {
+                    if (plot.getMerged(0)) {
                         if (spw.GENERATOR_PLOT_LOCS_SE.contains(new PlotLoc((short) (spw.MAX_X - rx), (short) (spw.MAX_Z - rz)))) {
                             return MainUtil.getBottomPlot(plot).id;
                         }
                     }
                 }
-                if (plot.settings.getMerged(0)) {
+                if (plot.getMerged(0)) {
                     if (spw.GENERATOR_PLOT_LOCS_E.contains(new PlotLoc((short) (spw.MAX_Z - rz), (short) (spw.MAX_X - rx)))) {
                         return MainUtil.getBottomPlot(plot).id;
                     }
@@ -152,24 +198,22 @@ public class SchemPlotManager extends PlotManager {
     @Override
     public boolean clearPlot(final PlotWorld plotworld, final Plot plot, final boolean isDelete, final Runnable whenDone) {
         final World world = BukkitUtil.getWorld(plot.world);
-        final SchemPlotWorld spw = ((SchemPlotWorld) PlotSquared.getPlotWorld(plot.world));
+        final SchemPlotWorld spw = ((SchemPlotWorld) PS.get().getPlotWorld(plot.world));
         final com.intellectualcrafters.plot.object.Location pos1 = MainUtil.getPlotBottomLoc(plot.world, plot.id).add(1, 0, 1);
         final int botX = pos1.getX();
         final int botZ = pos1.getZ();
         for (final PlotLoc loc : spw.GENERATOR_PLOT_LOCS) {
             for (int by = 0; by < world.getMaxHeight(); by++) {
-                BukkitUtil.setBlock(world, botX + loc.x, by, botZ + loc.z, 0, (byte) 0);
+                SetBlockQueue.setBlock(plot.world, botX + loc.x, by, botZ + loc.z, 0);
             }
         }
         for (final BlockWrapper loc : spw.GENERATOR_SCHEMATIC.values()) {
             final PlotLoc plotloc = new PlotLoc(loc.x, loc.z);
             if (spw.GENERATOR_PLOT_LOCS.contains(plotloc)) {
-                BukkitUtil.setBlock(world, loc.x + botX, loc.y + spw.PLOT_HEIGHT, loc.z + botZ, loc.id, loc.data);
+                SetBlockQueue.setBlock(plot.world, loc.x + botX, loc.y + spw.PLOT_HEIGHT, loc.z + botZ, new PlotBlock(loc.id, loc.data));
             }
         }
-
-        TaskManager.runTask(whenDone);
-
+        SetBlockQueue.addNotify(whenDone);
         return true;
     }
 
@@ -196,29 +240,6 @@ public class SchemPlotManager extends PlotManager {
     }
 
     @Override
-    public boolean setBiome(final Plot plot, final int biome) {
-        final int bottomX = MainUtil.getPlotBottomLoc(plot.world, plot.id).getX() - 1;
-        final int topX = MainUtil.getPlotTopLoc(plot.world, plot.id).getX() + 1;
-        final int bottomZ = MainUtil.getPlotBottomLoc(plot.world, plot.id).getZ() - 1;
-        final int topZ = MainUtil.getPlotTopLoc(plot.world, plot.id).getZ() + 1;
-        final int size = ((topX - bottomX) + 1) * ((topZ - bottomZ) + 1);
-        final int[] xb = new int[size];
-        final int[] zb = new int[size];
-        final int[] biomes = new int[size];
-        int index = 0;
-        for (int x = bottomX; x <= topX; x++) {
-            for (int z = bottomZ; z <= topZ; z++) {
-                xb[index] = x;
-                zb[index] = z;
-                biomes[index] = biome;
-                index++;
-            }
-        }
-        BlockManager.setBiomes(plot.world, xb, zb, biomes);
-        return true;
-    }
-
-    @Override
     public boolean setComponent(final PlotWorld arg0, final PlotId arg1, final String arg2, final PlotBlock[] arg3) {
         return true;
     }
@@ -242,7 +263,7 @@ public class SchemPlotManager extends PlotManager {
                 final int absX = (px - 1) * spw.WIDTH;
                 final int absZ = (pz - 1) * spw.LENGTH;
 
-                final Plot plot = PlotSquared.getPlots(world).get(plotid);
+                final Plot plot = PS.get().getPlots(world).get(plotid);
 
                 // check if less than MAX
 
@@ -254,9 +275,9 @@ public class SchemPlotManager extends PlotManager {
 
                     //                    System.out.print("MERGE SE");
 
-                    if (!plot.settings.getMerged(1) || !plot.settings.getMerged(2)) {
+                    if (!plot.getMerged(1) || !plot.getMerged(2)) {
                         for (final BlockWrapper blockwrapper : spw.GENERATOR_SCHEMATIC_MERGED_SE.values()) {
-                            BukkitUtil.setBlock(worldObj, absX + blockwrapper.x, blockwrapper.y, absZ + blockwrapper.z, blockwrapper.id, blockwrapper.data);
+                            SetBlockQueue.setBlock(plot.world, absX + blockwrapper.x, blockwrapper.y, absZ + blockwrapper.z, new PlotBlock(blockwrapper.id, blockwrapper.data));
                         }
                     }
                 }
@@ -265,36 +286,36 @@ public class SchemPlotManager extends PlotManager {
                     if (start.y == end.y) {
                         //                        System.out.print("MERGE EAST");
 
-                        if (!plot.settings.getMerged(1)) {
+                        if (!plot.getMerged(1)) {
                             for (final BlockWrapper blockwrapper : spw.GENERATOR_SCHEMATIC_MERGED_E2.values()) {
-                                BukkitUtil.setBlock(worldObj, absX + blockwrapper.x, blockwrapper.y, absZ + blockwrapper.z, blockwrapper.id, blockwrapper.data);
+                                SetBlockQueue.setBlock(plot.world, absX + blockwrapper.x, blockwrapper.y, absZ + blockwrapper.z, new PlotBlock(blockwrapper.id, blockwrapper.data));
                             }
                         }
                     } else if (y == start.y) {
 
                         //                            System.out.print("MERGE E1");
 
-                        if (!plot.settings.getMerged(1)) {
+                        if (!plot.getMerged(1)) {
                             for (final BlockWrapper blockwrapper : spw.GENERATOR_SCHEMATIC_MERGED_E1.values()) {
-                                BukkitUtil.setBlock(worldObj, absX + blockwrapper.x, blockwrapper.y, absZ + blockwrapper.z, blockwrapper.id, blockwrapper.data);
+                                SetBlockQueue.setBlock(plot.world, absX + blockwrapper.x, blockwrapper.y, absZ + blockwrapper.z, new PlotBlock(blockwrapper.id, blockwrapper.data));
                             }
                         }
                     } else if (y == end.y) {
-                        if (!plot.settings.getMerged(1)) {
+                        if (!plot.getMerged(1)) {
 
                             //                            System.out.print("MERGE E1 2");
 
                             for (final BlockWrapper blockwrapper : spw.GENERATOR_SCHEMATIC_MERGED_E1.values()) {
-                                BukkitUtil.setBlock(worldObj, absX + blockwrapper.x, blockwrapper.y, (absZ + spw.MAX_Z) - blockwrapper.z, blockwrapper.id, blockwrapper.data);
+                                SetBlockQueue.setBlock(plot.world, absX + blockwrapper.x, blockwrapper.y, (absZ + spw.MAX_Z) - blockwrapper.z, new PlotBlock(blockwrapper.id, blockwrapper.data));
                             }
                         }
                     } else {
 
                         //                        System.out.print("MERGE E0");
 
-                        if (!plot.settings.getMerged(1)) {
+                        if (!plot.getMerged(1)) {
                             for (final BlockWrapper blockwrapper : spw.GENERATOR_SCHEMATIC_MERGED_E0.values()) {
-                                BukkitUtil.setBlock(worldObj, absX + blockwrapper.x, blockwrapper.y, absZ + blockwrapper.z, blockwrapper.id, blockwrapper.data);
+                                SetBlockQueue.setBlock(plot.world, absX + blockwrapper.x, blockwrapper.y, absZ + blockwrapper.z, new PlotBlock(blockwrapper.id, blockwrapper.data));
                             }
                         }
                     }
@@ -304,36 +325,36 @@ public class SchemPlotManager extends PlotManager {
 
                         //                        System.out.print("MERGE SOUTH");
 
-                        if (!plot.settings.getMerged(2)) {
+                        if (!plot.getMerged(2)) {
                             for (final BlockWrapper blockwrapper : spw.GENERATOR_SCHEMATIC_MERGED_E2.values()) {
-                                BukkitUtil.setBlock(worldObj, absX + blockwrapper.z, blockwrapper.y, absZ + blockwrapper.x, blockwrapper.id, blockwrapper.data);
+                                SetBlockQueue.setBlock(plot.world, absX + blockwrapper.z, blockwrapper.y, absZ + blockwrapper.x, new PlotBlock(blockwrapper.id, blockwrapper.data));
                             }
                         }
                     } else if (x == start.x) {
 
                         //                        System.out.print("MERGE S1");
 
-                        if (!plot.settings.getMerged(2)) {
+                        if (!plot.getMerged(2)) {
                             for (final BlockWrapper blockwrapper : spw.GENERATOR_SCHEMATIC_MERGED_E1.values()) {
-                                BukkitUtil.setBlock(worldObj, absX + blockwrapper.z, blockwrapper.y, absZ + blockwrapper.x, blockwrapper.id, blockwrapper.data);
+                                SetBlockQueue.setBlock(plot.world, absX + blockwrapper.z, blockwrapper.y, absZ + blockwrapper.x, new PlotBlock(blockwrapper.id, blockwrapper.data));
                             }
                         }
                     } else if (x == end.x) {
 
                         //                        System.out.print("MERGE S1 2");
 
-                        if (!plot.settings.getMerged(2)) {
+                        if (!plot.getMerged(2)) {
                             for (final BlockWrapper blockwrapper : spw.GENERATOR_SCHEMATIC_MERGED_E1.values()) {
-                                BukkitUtil.setBlock(worldObj, (absX + spw.MAX_X) - blockwrapper.z, blockwrapper.y, absZ + blockwrapper.x, blockwrapper.id, blockwrapper.data);
+                                SetBlockQueue.setBlock(plot.world, (absX + spw.MAX_X) - blockwrapper.z, blockwrapper.y, absZ + blockwrapper.x, new PlotBlock(blockwrapper.id, blockwrapper.data));
                             }
                         }
                     } else {
 
                         //                        System.out.print("MERGE S0");
 
-                        if (!plot.settings.getMerged(2)) {
+                        if (!plot.getMerged(2)) {
                             for (final BlockWrapper blockwrapper : spw.GENERATOR_SCHEMATIC_MERGED_E0.values()) {
-                                BukkitUtil.setBlock(worldObj, absX + blockwrapper.z, blockwrapper.y, absZ + blockwrapper.x, blockwrapper.id, blockwrapper.data);
+                                SetBlockQueue.setBlock(plot.world, absX + blockwrapper.z, blockwrapper.y, absZ + blockwrapper.x, new PlotBlock(blockwrapper.id, blockwrapper.data));
                             }
                         }
                     }
@@ -348,7 +369,7 @@ public class SchemPlotManager extends PlotManager {
     public boolean startPlotUnlink(final PlotWorld plotworld, final ArrayList<PlotId> plotIds) {
         final SchemPlotWorld spw = (SchemPlotWorld) plotworld;
         final String world = plotworld.worldname;
-        final Plot plot = PlotSquared.getPlots(world).get(plotIds.get(0));
+        final Plot plot = PS.get().getPlots(world).get(plotIds.get(0));
         if (plot != null) {
             if (plot.hasOwner()) {
                 final UUID owner = plot.owner;
@@ -359,8 +380,7 @@ public class SchemPlotManager extends PlotManager {
             }
         }
 
-        final int maxY = BukkitUtil.getMaxHeight(world);
-        final World worldObj = BukkitUtil.getWorld(world);
+        final int maxY = 255;
 
         final PlotId start = plotIds.get(0);
         final PlotId end = plotIds.get(plotIds.size() - 1);
@@ -385,16 +405,16 @@ public class SchemPlotManager extends PlotManager {
                                 int valz = bz;
                                 if (valz == (spw.LENGTH - 1)) {
                                     valz = -1;
-                                    BukkitUtil.setBlock(worldObj, absX + bx, by, absZ + valz, 0, (byte) 0);
+                                    SetBlockQueue.setBlock(plot.world, absX + bx, by, absZ + valz, 0);
                                 }
 
                                 int valx = bx;
                                 if (valx == (spw.LENGTH - 1)) {
                                     valx = -1;
-                                    BukkitUtil.setBlock(worldObj, absX + valx, by, absZ + bz, 0, (byte) 0);
+                                    SetBlockQueue.setBlock(plot.world, absX + valx, by, absZ + bz, 0);
                                 }
 
-                                BukkitUtil.setBlock(worldObj, absX + bx, by, absZ + bz, 0, (byte) 0);
+                                SetBlockQueue.setBlock(plot.world, absX + bx, by, absZ + bz, 0);
                             }
                         }
                     }
@@ -409,26 +429,21 @@ public class SchemPlotManager extends PlotManager {
                         int valz = blockwrapper.z;
                         if (valz == (spw.LENGTH - 1)) {
                             valz = -1;
-                            BukkitUtil.setBlock(worldObj, absX + blockwrapper.x, blockwrapper.y, absZ + valz, plotblock.id, plotblock.data);
+                            SetBlockQueue.setBlock(plot.world, absX + blockwrapper.x, blockwrapper.y, absZ + valz, plotblock);
                         }
 
                         int valx = blockwrapper.x;
                         if (valx == (spw.LENGTH - 1)) {
                             valx = -1;
-                            BukkitUtil.setBlock(worldObj, absX + valx, blockwrapper.y, absZ + blockwrapper.z, plotblock.id, plotblock.data);
+                            SetBlockQueue.setBlock(plot.world, absX + valx, blockwrapper.y, absZ + blockwrapper.z, plotblock);
                         }
-                        BukkitUtil.setBlock(worldObj, absX + blockwrapper.x, blockwrapper.y, absZ + blockwrapper.z, plotblock.id, plotblock.data);
+                        SetBlockQueue.setBlock(plot.world, absX + blockwrapper.x, blockwrapper.y, absZ + blockwrapper.z, plotblock);
                     }
                 }
             }
         }
 
         return true;
-    }
-
-    @Override
-    public boolean unclaimPlot(final PlotWorld arg0, final Plot arg1) {
-        return false;
     }
 
     @Override

@@ -7,7 +7,7 @@ public class Main extends JavaPlugin {
 
     @Override
     public ChunkGenerator getDefaultWorldGenerator(final String worldname, final String id) {
-        return new SchemGen();
+        return new SchemGen(worldname);
     }
 
 }

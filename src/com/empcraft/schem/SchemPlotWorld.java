@@ -5,21 +5,17 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.bukkit.configuration.ConfigurationSection;
-
-import com.intellectualcrafters.plot.PlotSquared;
+import com.intellectualcrafters.configuration.ConfigurationSection;
+import com.intellectualcrafters.plot.PS;
 import com.intellectualcrafters.plot.config.Configuration;
 import com.intellectualcrafters.plot.config.ConfigurationNode;
 import com.intellectualcrafters.plot.object.PlotWorld;
-import com.intellectualcrafters.plot.util.BukkitSchematicHandler;
 import com.intellectualcrafters.plot.util.SchematicHandler;
 import com.intellectualcrafters.plot.util.SchematicHandler.DataCollection;
 import com.intellectualcrafters.plot.util.SchematicHandler.Dimension;
 import com.intellectualcrafters.plot.util.SchematicHandler.Schematic;
 
 public class SchemPlotWorld extends PlotWorld {
-
-    public static SchematicHandler schematicHandler = new BukkitSchematicHandler();
 
     public int PLOT_HEIGHT;
     public int HEIGHT = 0;
@@ -46,6 +42,112 @@ public class SchemPlotWorld extends PlotWorld {
     public SchemPlotWorld(final String worldname) {
         super(worldname);
     }
+    
+    public static byte wrap(byte data, int start) {
+        if (data >= start && data < start + 4) {
+            data = (byte) ((((data - start) + 2) % 4) + start);
+        }
+        return data;
+    }
+    
+    public static byte wrap2(byte data, int start) {
+        if (data >= start && data < start + 2) {
+            data = (byte) ((((data - start) + 1) % 2) + start);
+        }
+        return data;
+    }
+    
+    public static byte rotate(final short id, byte data) {
+        switch (id) {
+            case 183:
+            case 184:
+            case 185:
+            case 186:
+            case 187:
+            case 107:
+            case 53:
+            case 67:
+            case 108:
+            case 109:
+            case 114:
+            case 128:
+            case 134:
+            case 135:
+            case 136:
+            case 156:
+            case 163:
+            case 164:
+            case 180: {
+                data = wrap(data, 0);
+                data = wrap(data, 4);
+                return data;
+            }
+            
+            case 26:
+            case 86: {
+                data = wrap(data, 0);
+                return data;
+            }
+            case 64:
+            case 71:
+            case 193:
+            case 194:
+            case 195:
+            case 196:
+            case 197:
+            case 93:
+            case 94:
+            case 131:
+            case 145:
+            case 149:
+            case 150:
+            case 96:
+            case 167: {
+                data = wrap(data, 0);
+                data = wrap(data, 4);
+                data = wrap(data, 8);
+                data = wrap(data, 12);
+                return data;
+            }
+            case 28:
+            case 66:
+            case 157:
+            case 27: {
+                data = wrap2(data, 0);
+                data = wrap2(data, 3);
+                if (data == 2) {
+                    data = 5;
+                }
+                else if (data == 5) {
+                    data = 2;
+                }
+                return data;
+            }
+            
+            case 23:
+            case 29:
+            case 33:
+            case 158:
+            case 54:
+            case 130:
+            case 146:
+            case 61:
+            case 62:
+            case 65:
+            case 68:
+            case 144: {
+                data = wrap(data, 2);
+                return data;
+            }
+            case 143:
+            case 77: {
+                data = wrap(data, 1);
+                return data;
+            }
+            default:
+                return data;
+        }
+    }
 
     @Override
     public void loadConfiguration(final ConfigurationSection config) {
@@ -55,12 +157,12 @@ public class SchemPlotWorld extends PlotWorld {
             final String schem2Str = config.getString("plot.schematic.merged_east");
             final String schem3Str = config.getString("plot.schematic.merged_southeast");
             final String schem4Str = config.getString("plot.schematic.merged_all");
-            final Schematic schem1 = schematicHandler.getSchematic(schem1Str);
-            final Schematic schem2 = schematicHandler.getSchematic(schem2Str);
-            final Schematic schem3 = schematicHandler.getSchematic(schem3Str);
-            final Schematic schem4 = schematicHandler.getSchematic(schem4Str);
+            final Schematic schem1 = SchematicHandler.manager.getSchematic(schem1Str);
+            final Schematic schem2 = SchematicHandler.manager.getSchematic(schem2Str);
+            final Schematic schem3 = SchematicHandler.manager.getSchematic(schem3Str);
+            final Schematic schem4 = SchematicHandler.manager.getSchematic(schem4Str);
             if (schem1 == null) {
-                PlotSquared.log("&c[AdvPlots] Error loading schematic " + schem1Str + ". Please set a valid schematic in the settings.yml");
+                PS.log("&c[AdvPlots] Error loading schematic " + schem1Str + ". Please set a valid schematic in the settings.yml");
                 return;
             }
 
